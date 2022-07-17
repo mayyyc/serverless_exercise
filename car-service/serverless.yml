@@ -1,0 +1,52 @@
+service: car-service
+frameworkVersion: "3"
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-east-1
+  environment:
+    CAR_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"
+functions:
+  carSubmission:
+    handler: api/car.submit
+    memorySize: 128
+    description: Submit car information .
+    events:
+      - http:
+          path: cars
+          method: post
+  listCars:
+    handler: api/car.list
+    memorySize: 128
+    description: List all cars
+    events:
+      - http:
+          path: cars
+          method: get
+resources:
+  Resources:
+    CarsDynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: "id"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "id"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: "NEW_AND_OLD_IMAGES"
+        TableName: ${self:provider.environment.CAR_TABLE}
